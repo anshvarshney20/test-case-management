@@ -7,6 +7,7 @@ const multer = require('multer');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const { connectRedis } = require('./config/redis');
+const { query } = require('./config/db');
 const { generalLimiter } = require('./middleware/rateLimits');
 
 const authRoutes = require('./routes/auth');
@@ -36,7 +37,30 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
+    hasJwtSecret: Boolean(process.env.JWT_SECRET),
+  });
+});
+
+app.get('/api/health/db', async (_req, res) => {
+  try {
+    const result = await query('SELECT COUNT(*)::int AS users FROM users');
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      users: result.rows[0].users,
+    });
+  } catch (err) {
+    console.error('DB health error:', err.message);
+    res.status(500).json({
+      status: 'error',
+      database: 'disconnected',
+      message: err.message,
+    });
+  }
 });
 
 app.use('/api/auth', authRoutes);

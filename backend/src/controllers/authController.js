@@ -89,7 +89,13 @@ const login = async (req, res) => {
     });
   } catch (err) {
     console.error('Login error:', err);
-    res.status(500).json({ error: 'Login failed' });
+    const hint =
+      !process.env.DATABASE_URL
+        ? 'DATABASE_URL is not set'
+        : !process.env.JWT_SECRET
+          ? 'JWT_SECRET is not set'
+          : err.message;
+    res.status(500).json({ error: 'Login failed', detail: hint });
   }
 };
 

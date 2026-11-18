@@ -3,19 +3,18 @@ require('dotenv').config();
 
 const useUrl = !!process.env.DATABASE_URL;
 
+const needsSsl =
+  process.env.DB_SSL === 'true' ||
+  (process.env.DATABASE_URL || '').includes('supabase') ||
+  (process.env.DATABASE_URL || '').includes('render.com');
+
 const pool = useUrl
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
-      // Supabase requires SSL; local Docker usually does not
-      ssl:
-        process.env.DB_SSL === 'false'
-          ? false
-          : process.env.DATABASE_URL.includes('supabase') || process.env.DB_SSL === 'true'
-            ? { rejectUnauthorized: false }
-            : undefined,
+      ssl: needsSsl && process.env.DB_SSL !== 'false' ? { rejectUnauthorized: false } : undefined,
       max: 20,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
+      connectionTimeoutMillis: 15000,
     })
   : new Pool({
       host: process.env.DB_HOST || 'localhost',
